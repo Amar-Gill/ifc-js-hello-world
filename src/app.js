@@ -15,8 +15,8 @@ import { IFCLoader } from "web-ifc-three/IFCLoader";
 import {
   acceleratedRaycast,
   computeBoundsTree,
-  disposeBoundsTree
-} from 'three-mesh-bvh';
+  disposeBoundsTree,
+} from "three-mesh-bvh";
 
 //Creates the Three.js scene
 const scene = new Scene();
@@ -75,7 +75,7 @@ const preselectMat = new MeshLambertMaterial({
   transparent: true,
   opacity: 0.6,
   color: 0xff88ff,
-  depthTest: false
+  depthTest: false,
 });
 
 const selectMat = new MeshLambertMaterial({
@@ -91,14 +91,11 @@ const ifcLoader = new IFCLoader();
 const ifc = ifcLoader.ifcManager;
 
 // Reference to the previous selection
-const preselectModel = { id: -1};
-const selectModel = { id: - 1};
+const preselectModel = { id: -1 };
+const selectModel = { id: -1 };
 
 // Sets up optimized picking
-ifc.setupThreeMeshBVH(
-  computeBoundsTree,
-  disposeBoundsTree,
-  acceleratedRaycast);
+ifc.setupThreeMeshBVH(computeBoundsTree, disposeBoundsTree, acceleratedRaycast);
 
 function handleIfcModel(ifcModel) {
   scene.traverse((obj) => {
@@ -117,8 +114,9 @@ const raycaster = new Raycaster();
 raycaster.firstHitOnly = true;
 const mouse = new Vector2();
 
-function cast(event) {
+const output = document.getElementById("output");
 
+function cast(event) {
   // Computes the position of the mouse on the screen
   const bounds = threeCanvas.getBoundingClientRect();
 
@@ -137,45 +135,61 @@ function cast(event) {
   return raycaster.intersectObjects(ifcModels);
 }
 
-function highlight(event, material, model) {
+async function pick(intersection) {
+  const index = intersection.faceIndex;
+  const geometry = intersection.object.geometry;
+  const id = ifc.getExpressId(geometry, index);
+  const modelID = intersection.object.modelID;
+  const props = await ifc.getItemProperties(modelID, id);
+  output.innerHTML = JSON.stringify(props, null, 2);
+}
+
+function highlight(intersection, material, model) {
+  // Gets model ID
+  model.id = intersection.object.modelID;
+
+  // Gets Express ID
+  const index = intersection.faceIndex;
+  const geometry = intersection.object.geometry;
+  const id = ifc.getExpressId(geometry, index);
+
+  // Creates subset
+  ifc.createSubset({
+    modelID: model.id,
+    ids: [id],
+    material,
+    scene,
+    removePrevious: true,
+  });
+}
+
+function handleDblClick(event, material, model) {
   const found = cast(event)[0];
-
   if (found) {
-      // Gets model ID
-      model.id = found.object.modelID;
-
-      // Gets Express ID
-      const index = found.faceIndex;
-      const geometry = found.object.geometry;
-      const id = ifc.getExpressId(geometry, index);
-
-      // Creates subset
-      ifc.createSubset({
-          modelID: model.id,
-          ids: [id],
-          material,
-          scene,
-          removePrevious: true
-      });
+    pick(found);
+    highlight(found, material, model);
   } else {
-      // Removes previous highlight
-      ifc.removeSubset(model.id, material);
+    ifc.removeSubset(model.id, material);
+    output.innerHTML = null;
   }
 }
 
-function pick(event) {
+function handleMouseMove(event, material, model) {
   const found = cast(event)[0];
+
   if (found) {
-      const index = found.faceIndex;
-      const geometry = found.object.geometry;
-      const id = ifc.getExpressId(geometry, index);
-      console.log(id);
+    highlight(found, material, model);
+  } else {
+    // Removes previous highlight
+    ifc.removeSubset(model.id, material);
   }
 }
 
-threeCanvas.ondblclick = (event) => highlight(event, selectMat, selectModel);
+threeCanvas.ondblclick = (event) =>
+  handleDblClick(event, selectMat, selectModel);
 
-window.onmousemove = (event) => highlight(event, preselectMat, preselectModel);
+window.onmousemove = (event) =>
+  handleMouseMove(event, preselectMat, preselectModel);
 
 const input = document.getElementById("file-input");
 input.addEventListener(
