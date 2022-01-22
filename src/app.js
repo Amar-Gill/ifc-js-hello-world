@@ -97,13 +97,15 @@ const selectModel = { id: -1 };
 // Sets up optimized picking
 ifc.setupThreeMeshBVH(computeBoundsTree, disposeBoundsTree, acceleratedRaycast);
 
+const output = document.getElementById("output");
+
 function handleIfcModel(ifcModel) {
-  scene.traverse((obj) => {
-    if (obj.type === "Mesh") {
-      scene.remove(obj);
-    }
-  });
-  ifcModels.pop();
+  ifc.removeSubset(preselectModel.id, preselectMat);
+  ifc.removeSubset(selectModel.id, selectMat);
+  
+  output.innerHTML = null;
+
+  scene.remove(ifcModels.pop());
 
   ifcModels.push(ifcModel);
   scene.add(ifcModel);
@@ -113,8 +115,6 @@ function handleIfcModel(ifcModel) {
 const raycaster = new Raycaster();
 raycaster.firstHitOnly = true;
 const mouse = new Vector2();
-
-const output = document.getElementById("output");
 
 function cast(event) {
   // Computes the position of the mouse on the screen
