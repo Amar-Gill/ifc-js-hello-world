@@ -8,6 +8,7 @@ import {
   WebGLRenderer,
   Raycaster,
   Vector2,
+  MeshLambertMaterial,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { IFCLoader } from "web-ifc-three/IFCLoader";
@@ -69,12 +70,24 @@ const controls = new OrbitControls(camera, threeCanvas);
 controls.enableDamping = true;
 controls.target.set(-2, 0, 0);
 
+// Creates subset material
+const preselectMat = new MeshLambertMaterial({
+  transparent: true,
+  opacity: 0.6,
+  color: 0xff88ff,
+  depthTest: false
+});
+
 // Sets up the IFC loading
 const ifcModels = [];
 const ifcLoader = new IFCLoader();
+const ifc = ifcLoader.ifcManager;
+
+// Reference to the previous selection
+const preselectModel = { id: -1};
 
 // Sets up optimized picking
-ifcLoader.ifcManager.setupThreeMeshBVH(
+ifc.setupThreeMeshBVH(
   computeBoundsTree,
   disposeBoundsTree,
   acceleratedRaycast);
@@ -116,18 +129,48 @@ function cast(event) {
   return raycaster.intersectObjects(ifcModels);
 }
 
+function highlight(event, material, model) {
+  const found = cast(event)[0];
+
+  if (found) {
+      // Gets model ID
+      model.id = found.object.modelID;
+
+      // Gets Express ID
+      const index = found.faceIndex;
+      const geometry = found.object.geometry;
+      const id = ifc.getExpressId(geometry, index);
+
+      // Creates subset
+      ifc.createSubset({
+          modelID: model.id,
+          ids: [id],
+          material,
+          scene,
+          removePrevious: true
+      });
+  } else {
+      // Removes previous highlight
+      ifc.removeSubset(model.id, material);
+  }
+}
+
 function pick(event) {
   const found = cast(event)[0];
   if (found) {
       const index = found.faceIndex;
       const geometry = found.object.geometry;
-      const ifc = ifcLoader.ifcManager;
       const id = ifc.getExpressId(geometry, index);
       console.log(id);
   }
 }
 
 threeCanvas.ondblclick = pick;
+
+window.onmousemove = (event) => highlight(
+  event,
+  preselectMat,
+  preselectModel);
 
 const input = document.getElementById("file-input");
 input.addEventListener(
