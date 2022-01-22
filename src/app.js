@@ -65,13 +65,23 @@ controls.target.set(-2, 0, 0);
 // Sets up the IFC loading
 const ifcLoader = new IFCLoader();
 
+function handleIfcModel(ifcModel) {
+  scene.traverse((obj) => {
+    if (obj.type === "Mesh") {
+      scene.remove(obj);
+    }
+  });
+
+  scene.add(ifcModel);
+}
+
 const input = document.getElementById("file-input");
 input.addEventListener(
   "change",
   (changed) => {
     const file = changed.target.files[0];
     var ifcURL = URL.createObjectURL(file);
-    ifcLoader.load(ifcURL, (ifcModel) => scene.add(ifcModel));
+    ifcLoader.load(ifcURL, (ifcModel) => handleIfcModel(ifcModel));
   },
   false
 );
