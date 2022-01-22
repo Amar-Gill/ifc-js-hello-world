@@ -78,6 +78,13 @@ const preselectMat = new MeshLambertMaterial({
   depthTest: false
 });
 
+const selectMat = new MeshLambertMaterial({
+  transparent: true,
+  opacity: 0.6,
+  color: 0xff00ff,
+  depthTest: false,
+});
+
 // Sets up the IFC loading
 const ifcModels = [];
 const ifcLoader = new IFCLoader();
@@ -85,6 +92,7 @@ const ifc = ifcLoader.ifcManager;
 
 // Reference to the previous selection
 const preselectModel = { id: -1};
+const selectModel = { id: - 1};
 
 // Sets up optimized picking
 ifc.setupThreeMeshBVH(
@@ -165,12 +173,9 @@ function pick(event) {
   }
 }
 
-threeCanvas.ondblclick = pick;
+threeCanvas.ondblclick = (event) => highlight(event, selectMat, selectModel);
 
-window.onmousemove = (event) => highlight(
-  event,
-  preselectMat,
-  preselectModel);
+window.onmousemove = (event) => highlight(event, preselectMat, preselectModel);
 
 const input = document.getElementById("file-input");
 input.addEventListener(
